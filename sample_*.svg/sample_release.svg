@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="158" height="28" role="img" aria-label="🚀 RELEASE: V2.0.0">
+
+<rect x="0" y="0" width="90" height="28" fill="#7c2d12" rx="4" ry="4" />
+<rect x="90" y="0" width="68" height="28" fill="#9a3412" rx="4" ry="4" />
+<rect x="86" y="0" width="4" height="28" fill="#7c2d12" />
+<text x="45.0" y="17.96" fill="#ffedd5" font-size="12" font-family="Verdana,DejaVu Sans,sans-serif" font-weight="700" text-anchor="middle">🚀 RELEASE</text>
+<text x="124.0" y="17.96" fill="#fde68a" font-size="12" font-family="Verdana,DejaVu Sans,sans-serif" font-weight="700" text-anchor="middle">V2.0.0</text>
+
+</svg>

@@ -1,4 +1,5 @@
-import os
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 
@@ -6,46 +7,22 @@ ROOT = Path(__file__).resolve().parents[1]
 API_DIR = ROOT / "api"
 sys.path.insert(0, str(API_DIR))
 
-from data_fetchers import fetch_user_stats
-from github_stats import generate_graph_card, generate_stats_card, generate_streak_card, generate_views_card
+from github_stats import generate_custom_badge
+
+SAMPLES = {
+    "sample_build.svg": dict(label="build", value="passing", icon="check", theme="terminal", style="flat"),
+    "sample_release.svg": dict(label="release", value="v2.0.0", icon="rocket", theme="sunset", style="for-the-badge", uppercase=True),
+    "sample_coverage.svg": dict(label="coverage", value="98%", icon="bolt", theme="dark", style="plastic", gradient=True),
+    "sample_docs.svg": dict(label="docs", value="stable", icon="docs", theme="light", style="social"),
+}
 
 
 def main():
-    username = os.environ.get("SVG_STATS_USERNAME", "octocat")
-    theme = os.environ.get("SVG_STATS_THEME", "dark")
-
-    stats = fetch_user_stats(username, force_refresh=True)
-    sample_dir = ROOT / "sample_*.svg"
-    sample_dir.mkdir(exist_ok=True)
-
-    (sample_dir / "sample_stats.svg").write_text(
-        generate_stats_card(
-            username=username,
-            stars=stats["stars"],
-            commits=stats["commits"],
-            prs=stats["prs"],
-            issues=stats["issues"],
-            contribs=stats["contribs"],
-            theme=theme,
-            animate=True,
-        ),
-        encoding="utf-8",
-    )
-
-    (sample_dir / "sample_streak.svg").write_text(
-        generate_streak_card(username=username, theme=theme, animate=True),
-        encoding="utf-8",
-    )
-
-    (sample_dir / "sample_graph.svg").write_text(
-        generate_graph_card(username=username, theme=theme, weeks=52, animate=True),
-        encoding="utf-8",
-    )
-
-    (sample_dir / "sample_views.svg").write_text(
-        generate_views_card(username=username, count=stats["contribs"], theme=theme, label="Activity", icon_show=True),
-        encoding="utf-8",
-    )
+    output_dir = ROOT / "sample_*.svg"
+    output_dir.mkdir(exist_ok=True)
+    for file_name, params in SAMPLES.items():
+        svg = generate_custom_badge(**params)
+        (output_dir / file_name).write_text(svg, encoding="utf-8")
 
 
 if __name__ == "__main__":

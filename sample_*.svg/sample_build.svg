@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="24" role="img" aria-label="✓ build: passing">
+
+<rect x="0" y="0" width="64" height="24" fill="#052e16" rx="4" ry="4" />
+<rect x="64" y="0" width="64" height="24" fill="#14532d" rx="4" ry="4" />
+<rect x="60" y="0" width="4" height="24" fill="#052e16" />
+<text x="32.0" y="15.63" fill="#dcfce7" font-size="11" font-family="Verdana,DejaVu Sans,sans-serif" font-weight="600" text-anchor="middle">✓ build</text>
+<text x="96.0" y="15.63" fill="#86efac" font-size="11" font-family="Verdana,DejaVu Sans,sans-serif" font-weight="600" text-anchor="middle">passing</text>
+
+</svg>

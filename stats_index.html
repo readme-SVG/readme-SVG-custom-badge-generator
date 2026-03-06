@@ -1,583 +1,180 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GitHub Stats Cards Generator</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Fira+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Custom Badge Generator</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg: #06090d;
-      --s1: #0c1018;
-      --s2: #131822;
-      --s3: #1a2030;
-      --border: rgba(100,160,255,0.08);
-      --accent: #4f8cff;
-      --accent2: #a78bfa;
-      --glow: rgba(79,140,255,0.15);
-      --text: #dde5f0;
-      --muted: #5a6a80;
-      --font: 'Syne', sans-serif;
-      --mono: 'Fira Mono', monospace;
-      --green: #3fb950;
-      --orange: #d29922;
-      --red: #f85149;
-    }
-
-    html, body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: var(--font); }
-
-    body::before {
-      content: '';
-      position: fixed; inset: 0; z-index: 0;
-      background-image: radial-gradient(circle, rgba(79,140,255,0.06) 1px, transparent 1px);
-      background-size: 28px 28px;
-      pointer-events: none;
-    }
-
-    body::after {
-      content: '';
-      position: fixed; top: -300px; left: 50%; transform: translateX(-50%);
-      width: 900px; height: 600px;
-      background: radial-gradient(ellipse, rgba(79,140,255,0.07) 0%, transparent 65%);
-      pointer-events: none; z-index: 0;
-    }
-
-    .banner {
-      position: relative; z-index: 10;
-      background: var(--s1);
-      border-bottom: 1px solid var(--border);
-      padding: 10px 28px;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .banner-brand { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
-    .banner-brand b { color: var(--accent); font-weight: 500; }
-
-    .page {
-      position: relative; z-index: 1;
-      display: flex; flex-direction: column; align-items: center;
-      padding: 50px 20px 100px;
-    }
-
-    header { text-align: center; margin-bottom: 50px; }
-
-    .eyebrow {
-      display: inline-flex; align-items: center; gap: 8px;
-      font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
-      color: var(--accent); text-transform: uppercase;
-      background: rgba(79,140,255,0.07);
-      border: 1px solid rgba(79,140,255,0.15);
-      border-radius: 100px; padding: 5px 14px;
-      margin-bottom: 22px;
-    }
-    .eyebrow::before { content: '~'; opacity: 0.6; }
-
-    h1 {
-      font-size: clamp(32px, 5vw, 60px);
-      font-weight: 800; letter-spacing: -0.04em;
-      line-height: 1.05; margin-bottom: 16px;
-    }
-    h1 em {
-      font-style: normal;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .subtitle { font-size: 15px; color: var(--muted); max-width: 500px; margin: 0 auto; line-height: 1.6; }
-
-    /* Card type tabs */
-    .card-tabs {
-      display: flex; gap: 6px; margin-bottom: 32px;
-      background: var(--s1); border: 1px solid var(--border);
-      border-radius: 12px; padding: 6px;
-    }
-    .card-tab {
-      padding: 10px 20px;
-      background: transparent; border: none; border-radius: 8px;
-      font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em;
-      color: var(--muted); cursor: pointer; transition: all .2s;
-    }
-    .card-tab:hover { color: var(--text); }
-    .card-tab.active {
-      background: rgba(79,140,255,0.12);
-      color: var(--accent);
-      font-weight: 500;
-    }
-
-    /* Preview */
-    .preview-area {
-      width: 100%; max-width: 860px;
-      background: var(--s1);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
-      margin-bottom: 28px;
-      min-height: 160px;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .preview-area svg { max-width: 100%; height: auto; }
-
-    /* Controls panel */
-    .controls {
-      width: 100%; max-width: 860px;
-      background: var(--s1);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 28px;
-      margin-bottom: 24px;
-    }
-
-    .ctrl-section-title {
-      font-family: var(--mono); font-size: 10px;
-      letter-spacing: 0.12em; text-transform: uppercase;
-      color: var(--accent); margin-bottom: 16px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .ctrl-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    @media (max-width: 700px) { .ctrl-grid { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 450px) { .ctrl-grid { grid-template-columns: 1fr; } }
-
-    .ctrl { display: flex; flex-direction: column; gap: 6px; }
-
-    label {
-      font-family: var(--mono); font-size: 10px;
-      letter-spacing: 0.1em; text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    select, input[type="number"], input[type="text"] {
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 9px; padding: 10px 14px;
-      color: var(--text); font-family: var(--mono); font-size: 13px;
-      outline: none; transition: border-color .2s, box-shadow .2s;
-      width: 100%; -moz-appearance: textfield; appearance: textfield;
-    }
-    select {
-      cursor: pointer; -webkit-appearance: none; appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a6a80'/%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
-    }
-    input[type="number"]::-webkit-outer-spin-button,
-    input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
-
-    select:focus, input:focus {
-      border-color: rgba(79,140,255,0.4);
-      box-shadow: 0 0 0 3px rgba(79,140,255,0.08);
-    }
-
-    .color-pair { display: flex; gap: 8px; align-items: center; }
-    .color-pair input[type="text"] { flex: 1; }
-    input[type="color"] {
-      width: 40px; height: 40px;
-      border: 1px solid var(--border); border-radius: 8px;
-      background: var(--bg); padding: 3px;
-      cursor: pointer; flex-shrink: 0;
-    }
-
-    /* Toggles */
-    .toggles-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
-    .toggle-btn {
-      display: flex; align-items: center; gap: 8px;
-      padding: 8px 16px;
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 8px;
-      font-family: var(--mono); font-size: 11px;
-      color: var(--muted); cursor: pointer;
-      transition: all .2s; user-select: none;
-    }
-    .toggle-btn:hover { border-color: rgba(79,140,255,0.3); color: var(--text); }
-    .toggle-btn.on {
-      background: rgba(79,140,255,0.1);
-      border-color: rgba(79,140,255,0.35);
-      color: var(--accent);
-    }
-    .toggle-btn .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--muted); transition: background .2s;
-    }
-    .toggle-btn.on .dot { background: var(--accent); }
-
-    /* Theme grid */
-    .theme-grid {
-      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
-    }
-    .theme-chip {
-      padding: 6px 14px;
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 20px;
-      font-family: var(--mono); font-size: 11px;
-      color: var(--muted); cursor: pointer;
-      transition: all .2s;
-    }
-    .theme-chip:hover { border-color: rgba(79,140,255,0.3); color: var(--text); }
-    .theme-chip.active {
-      background: rgba(79,140,255,0.12);
-      border-color: rgba(79,140,255,0.4);
-      color: var(--accent);
-    }
-
-    /* Output */
-    .output-card {
-      width: 100%; max-width: 860px;
-    }
-    .output-section {
-      background: var(--s1);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
-      margin-bottom: 16px;
-    }
-    .section-title {
-      font-family: var(--mono); font-size: 10px;
-      letter-spacing: 0.12em; text-transform: uppercase;
-      color: var(--muted); margin-bottom: 14px;
-    }
-    .tabs { display: flex; gap: 4px; margin-bottom: 12px; }
-    .tab {
-      padding: 6px 14px;
-      background: transparent; border: 1px solid transparent;
-      border-radius: 6px;
-      font-family: var(--mono); font-size: 11px;
-      color: var(--muted); cursor: pointer; transition: all .15s;
-    }
-    .tab.active { background: var(--s2); border-color: var(--border); color: var(--text); }
-
-    .code-wrap {
-      position: relative;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 10px; overflow: hidden;
-    }
-    .code-wrap pre {
-      padding: 16px;
-      font-family: var(--mono); font-size: 12px; color: var(--muted);
-      overflow-x: auto; line-height: 1.8;
-      white-space: pre-wrap; word-break: break-all;
-    }
-    .copy-btn {
-      position: absolute; top: 10px; right: 10px;
-      background: var(--s2); border: 1px solid var(--border); border-radius: 6px;
-      padding: 5px 10px;
-      font-family: var(--mono); font-size: 11px; color: var(--muted);
-      cursor: pointer; transition: all .15s;
-    }
-    .copy-btn:hover { color: var(--text); border-color: rgba(79,140,255,0.3); }
-    .copy-btn.ok { color: var(--green); border-color: rgba(63,185,80,0.3); }
-
-    /* Panel visibility */
-    .panel { display: none; }
-    .panel.visible { display: block; }
+    :root { color-scheme: dark; }
+    body { margin: 0; font-family: Inter, Arial, sans-serif; background: #0b1020; color: #e6ecff; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 28px 18px 40px; }
+    h1 { margin: 0 0 8px; font-size: 30px; }
+    p { margin: 0 0 18px; color: #b8c3dd; }
+    .card { background: #121a30; border: 1px solid #26314d; border-radius: 14px; padding: 18px; margin-top: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    @media (max-width: 860px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+    label { display: block; font-size: 12px; margin-bottom: 6px; color: #91a0bf; }
+    input, select { width: 100%; box-sizing: border-box; border-radius: 10px; border: 1px solid #314062; background: #0f1730; color: #e6ecff; padding: 10px; }
+    .checks { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 6px; }
+    .checks label { display: flex; gap: 8px; align-items: center; margin: 0; font-size: 13px; color: #c7d3f0; }
+    .preview { min-height: 90px; display: flex; align-items: center; justify-content: center; border: 1px dashed #3a4d78; border-radius: 10px; background: #0d1427; }
+    .actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    button { border: none; border-radius: 10px; background: #4f7cff; color: white; padding: 10px 14px; font-weight: 600; cursor: pointer; }
+    button.alt { background: #273556; }
+    code { background: #0a1228; border: 1px solid #2a3a60; padding: 2px 6px; border-radius: 6px; }
+    textarea { width: 100%; min-height: 74px; resize: vertical; border: 1px solid #314062; background: #0f1730; color: #dbe7ff; border-radius: 10px; padding: 10px; box-sizing: border-box; }
   </style>
 </head>
 <body>
+  <div class="wrap">
+    <h1>Custom Badge Generator</h1>
+    <p>Настраивай всё: текст, стиль, тему, цвета, пресеты и формат markdown.</p>
 
-<div class="banner">
-  <span class="banner-brand">GitHub <b>Stats Cards</b> Generator</span>
-</div>
-
-<div class="page">
-  <header>
-    <div class="eyebrow">Custom SVG Cards</div>
-    <h1>GitHub <em>Stats Cards</em><br/>for your README</h1>
-    <p class="subtitle">Generate custom stats, streak, contribution graph, and profile view counter cards. Fully configurable via URL parameters.</p>
-  </header>
-
-  <!-- Card type selector -->
-  <div class="card-tabs">
-    <button class="card-tab active" onclick="switchCard('stats', this)">Stats</button>
-    <button class="card-tab" onclick="switchCard('streak', this)">Streak</button>
-    <button class="card-tab" onclick="switchCard('graph', this)">Graph</button>
-    <button class="card-tab" onclick="switchCard('views', this)">Views</button>
-  </div>
-
-  <!-- Preview -->
-  <div class="preview-area" id="preview"></div>
-
-  <!-- Controls -->
-  <div class="controls">
-
-    <!-- Shared: username + theme -->
-    <div class="ctrl-section-title">Identity & Theme</div>
-    <div class="ctrl-grid">
-      <div class="ctrl">
-        <label>GitHub Username</label>
-        <input type="text" id="username" value="OstinUA"/>
-      </div>
-      <div class="ctrl">
-        <label>Custom Title (optional)</label>
-        <input type="text" id="custom_title" value="" placeholder="Leave empty for default"/>
-      </div>
-      <div class="ctrl">
-        <label>Border Radius</label>
-        <input type="number" id="border_radius" value="10" min="0" max="30"/>
-      </div>
-    </div>
-
-    <div class="ctrl-section-title">Theme</div>
-    <div class="theme-grid" id="theme-grid"></div>
-
-    <!-- Stats-specific -->
-    <div class="panel visible" id="panel-stats">
-      <div class="ctrl-section-title">Stats Values (auto-generated from username)</div>
-      <div class="ctrl-grid">
-        <div class="ctrl"><label>Stars</label><input type="number" id="stars" value="156"/></div>
-        <div class="ctrl"><label>Commits</label><input type="number" id="commits" value="1247"/></div>
-        <div class="ctrl"><label>PRs</label><input type="number" id="prs" value="83"/></div>
-        <div class="ctrl"><label>Issues</label><input type="number" id="issues" value="42"/></div>
-        <div class="ctrl"><label>Contributed To</label><input type="number" id="contribs" value="28"/></div>
-      </div>
-    </div>
-
-    <!-- Streak-specific -->
-    <div class="panel" id="panel-streak">
-      <div class="ctrl-section-title">Streak Values</div>
-      <div class="ctrl-grid">
-        <div class="ctrl"><label>Current Streak</label><input type="number" id="current_streak" value="12"/></div>
-        <div class="ctrl"><label>Longest Streak</label><input type="number" id="longest_streak" value="47"/></div>
-        <div class="ctrl"><label>Total Contributions</label><input type="number" id="total_contribs" value="2341"/></div>
-      </div>
-    </div>
-
-    <!-- Graph-specific -->
-    <div class="panel" id="panel-graph">
-      <div class="ctrl-section-title">Graph Settings</div>
-      <div class="ctrl-grid">
-        <div class="ctrl"><label>Weeks to show</label><input type="number" id="weeks" value="52" min="10" max="52"/></div>
-      </div>
-    </div>
-
-    <!-- Views-specific -->
-    <div class="panel" id="panel-views">
-      <div class="ctrl-section-title">Views Badge Settings</div>
-      <div class="ctrl-grid">
-        <div class="ctrl"><label>Count</label><input type="number" id="view_count" value="1234"/></div>
-        <div class="ctrl"><label>Label</label><input type="text" id="view_label" value="Profile Views"/></div>
-        <div class="ctrl">
-          <label>Badge Style</label>
-          <select id="badge_style">
-            <option value="flat">Flat</option>
-            <option value="card">Card</option>
-          </select>
+    <div class="card">
+      <div class="grid">
+        <div>
+          <label>Preset</label>
+          <select id="preset"></select>
+        </div>
+        <div>
+          <label>Style</label>
+          <select id="style"></select>
+        </div>
+        <div>
+          <label>Theme</label>
+          <select id="theme"></select>
+        </div>
+        <div>
+          <label>Icon</label>
+          <select id="icon"></select>
+        </div>
+        <div>
+          <label>Label</label>
+          <input id="label" value="build" />
+        </div>
+        <div>
+          <label>Value</label>
+          <input id="value" value="passing" />
+        </div>
+        <div>
+          <label>Label BG (hex)</label>
+          <input id="label_bg" placeholder="#1f2937" />
+        </div>
+        <div>
+          <label>Value BG (hex)</label>
+          <input id="value_bg" placeholder="#111827" />
+        </div>
+        <div>
+          <label>Label Color (hex)</label>
+          <input id="label_color" placeholder="#f3f4f6" />
+        </div>
+        <div>
+          <label>Value Color (hex)</label>
+          <input id="value_color" placeholder="#93c5fd" />
+        </div>
+        <div>
+          <label>Border Color (hex)</label>
+          <input id="border_color" placeholder="#374151" />
+        </div>
+        <div>
+          <label>Border Radius</label>
+          <input id="border_radius" type="number" min="0" max="18" value="4" />
         </div>
       </div>
-    </div>
 
-    <!-- Color overrides -->
-    <div class="ctrl-section-title">Color Overrides (leave empty for theme defaults)</div>
-    <div class="ctrl-grid">
-      <div class="ctrl">
-        <label>Background</label>
-        <div class="color-pair">
-          <input type="color" id="bg_color_picker" value="#0d1117"/>
-          <input type="text" id="bg_color" value="" placeholder="auto"/>
-        </div>
+      <div class="checks">
+        <label><input id="gradient" type="checkbox" /> gradient</label>
+        <label><input id="uppercase" type="checkbox" /> uppercase</label>
+        <label><input id="compact" type="checkbox" /> compact</label>
       </div>
-      <div class="ctrl">
-        <label>Title Color</label>
-        <div class="color-pair">
-          <input type="color" id="title_color_picker" value="#58a6ff"/>
-          <input type="text" id="title_color" value="" placeholder="auto"/>
-        </div>
-      </div>
-      <div class="ctrl">
-        <label>Text Color</label>
-        <div class="color-pair">
-          <input type="color" id="text_color_picker" value="#c9d1d9"/>
-          <input type="text" id="text_color" value="" placeholder="auto"/>
-        </div>
+
+      <div class="actions">
+        <button id="render">Render</button>
+        <button class="alt" id="copy-url">Copy URL</button>
+        <button class="alt" id="copy-md">Copy Markdown</button>
       </div>
     </div>
 
-    <!-- Toggles -->
-    <div class="toggles-row">
-      <div class="toggle-btn" id="toggle-hide_border" onclick="toggleFlag('hide_border', this)">
-        <span class="dot"></span> Hide Border
-      </div>
-      <div class="toggle-btn on" id="toggle-animate" onclick="toggleFlag('animate', this)">
-        <span class="dot"></span> Animate
-      </div>
-      <div class="toggle-btn" id="toggle-hide_rank" onclick="toggleFlag('hide_rank', this)">
-        <span class="dot"></span> Hide Rank
-      </div>
+    <div class="card">
+      <div class="preview" id="preview">Loading preview…</div>
+      <p style="margin-top:10px; margin-bottom:8px;">Badge URL</p>
+      <textarea id="url" readonly></textarea>
+      <p style="margin-top:10px; margin-bottom:8px;">Markdown</p>
+      <textarea id="markdown" readonly></textarea>
+      <p style="margin-top:10px;">Endpoint: <code>/badge</code>, metadata: <code>/catalog</code></p>
     </div>
   </div>
 
-  <!-- Output -->
-  <div class="output-card">
-    <div class="output-section">
-      <div class="section-title">Embed Code</div>
-      <div class="tabs">
-        <button class="tab active" onclick="setOutputTab('markdown', this)">Markdown</button>
-        <button class="tab" onclick="setOutputTab('html', this)">HTML</button>
-        <button class="tab" onclick="setOutputTab('url', this)">Direct URL</button>
-      </div>
-      <div class="code-wrap">
-        <pre id="code-out"></pre>
-        <button class="copy-btn" id="copy-btn" onclick="copyCode()">Copy</button>
-      </div>
-    </div>
-  </div>
-</div>
+  <script>
+    const ids = ["preset","style","theme","icon","label","value","label_bg","value_bg","label_color","value_color","border_color","border_radius","gradient","uppercase","compact"];
+    const input = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+    const preview = document.getElementById("preview");
+    const urlBox = document.getElementById("url");
+    const mdBox = document.getElementById("markdown");
 
-<script>
-const themes = ['dark','radical','tokyonight','gruvbox','ocean','sunset','light'];
-let currentCard = 'stats';
-let currentTheme = 'dark';
-let outputTab = 'markdown';
-let flags = { hide_border: false, animate: true, hide_rank: false };
-let lastUrl = '';
+    const buildQuery = () => {
+      const q = new URLSearchParams();
+      Object.entries(input).forEach(([key, el]) => {
+        if (el.type === "checkbox") {
+          if (el.checked) q.set(key, "true");
+          return;
+        }
+        if (el.value.trim()) q.set(key, el.value.trim());
+      });
+      return q.toString();
+    };
 
-// Build theme chips
-const tg = document.getElementById('theme-grid');
-themes.forEach(t => {
-  const chip = document.createElement('button');
-  chip.className = 'theme-chip' + (t === 'dark' ? ' active' : '');
-  chip.textContent = t;
-  chip.onclick = () => {
-    currentTheme = t;
-    document.querySelectorAll('.theme-chip').forEach(c => c.classList.remove('active'));
-    chip.classList.add('active');
-    generate();
-  };
-  tg.appendChild(chip);
-});
+    const render = () => {
+      const query = buildQuery();
+      const badgeUrl = `${location.origin}/badge?${query}`;
+      preview.innerHTML = `<img alt="badge preview" src="${badgeUrl}" />`;
+      urlBox.value = badgeUrl;
+      mdBox.value = `![custom badge](${badgeUrl})`;
+    };
 
-// Color sync
-function syncColor(pickerId, textId) {
-  const p = document.getElementById(pickerId);
-  const t = document.getElementById(textId);
-  p.addEventListener('input', () => { t.value = p.value; generate(); });
-  t.addEventListener('input', () => {
-    if (/^#[0-9a-fA-F]{6}$/.test(t.value)) { p.value = t.value; }
-    generate();
-  });
-}
-syncColor('bg_color_picker', 'bg_color');
-syncColor('title_color_picker', 'title_color');
-syncColor('text_color_picker', 'text_color');
+    const copyText = async (text) => {
+      await navigator.clipboard.writeText(text);
+    };
 
-// Toggle
-function toggleFlag(key, el) {
-  flags[key] = !flags[key];
-  el.classList.toggle('on', flags[key]);
-  generate();
-}
+    document.getElementById("render").addEventListener("click", render);
+    document.getElementById("copy-url").addEventListener("click", async () => copyText(urlBox.value));
+    document.getElementById("copy-md").addEventListener("click", async () => copyText(mdBox.value));
 
-// Card switching
-function switchCard(card, btn) {
-  currentCard = card;
-  document.querySelectorAll('.card-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('visible'));
-  const panel = document.getElementById('panel-' + card);
-  if (panel) panel.classList.add('visible');
-  generate();
-}
-
-// Output tab
-function setOutputTab(tab, btn) {
-  outputTab = tab;
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  updateCode();
-}
-
-// Debounce
-let debTimer = null;
-function debouncedGenerate() { clearTimeout(debTimer); debTimer = setTimeout(generate, 300); }
-
-document.querySelectorAll('input, select').forEach(el => {
-  el.addEventListener('input', debouncedGenerate);
-  el.addEventListener('change', debouncedGenerate);
-});
-
-function val(id) { return document.getElementById(id)?.value || ''; }
-
-function generate() {
-  const username = val('username') || 'octocat';
-  const params = new URLSearchParams({ username, theme: currentTheme });
-
-  // Shared params
-  const br = val('border_radius');
-  if (br && br !== '10') params.set('border_radius', br);
-  if (flags.hide_border) params.set('hide_border', 'true');
-  if (!flags.animate) params.set('animate', 'false');
-
-  // Color overrides
-  ['bg_color','title_color','text_color'].forEach(k => {
-    const v = val(k);
-    if (v) params.set(k, v.replace('#',''));
-  });
-
-  if (currentCard === 'stats') {
-    const ct = val('custom_title');
-    if (ct) params.set('custom_title', ct);
-    if (flags.hide_rank) params.set('hide_rank', 'true');
-    ['stars','commits','prs','issues','contribs'].forEach(k => {
-      const v = val(k);
-      if (v) params.set(k, v);
+    ids.forEach(id => input[id].addEventListener("change", render));
+    ["label","value","label_bg","value_bg","label_color","value_color","border_color","border_radius"].forEach(id => {
+      input[id].addEventListener("input", render);
     });
-  } else if (currentCard === 'streak') {
-    ['current_streak','longest_streak','total_contribs'].forEach(k => {
-      const v = val(k);
-      if (v) params.set(k, v);
-    });
-  } else if (currentCard === 'graph') {
-    const w = val('weeks');
-    if (w && w !== '52') params.set('weeks', w);
-  } else if (currentCard === 'views') {
-    params.set('count', val('view_count') || '0');
-    params.set('label', val('view_label') || 'Profile Views');
-    params.set('style', val('badge_style') || 'flat');
-  }
 
-  const url = `/${currentCard}?${params}`;
-  lastUrl = url;
+    fetch("/catalog")
+      .then(r => r.json())
+      .then(catalog => {
+        const appendOptions = (el, values) => values.forEach(v => el.insertAdjacentHTML("beforeend", `<option value="${v}">${v}</option>`));
+        appendOptions(input.style, catalog.styles);
+        appendOptions(input.theme, catalog.themes);
+        appendOptions(input.icon, catalog.icons);
+        appendOptions(input.preset, Object.keys(catalog.presets));
 
-  fetch(url)
-    .then(r => r.text())
-    .then(svg => {
-      document.getElementById('preview').innerHTML = svg;
-    })
-    .catch(() => {});
+        input.preset.addEventListener("change", () => {
+          const p = catalog.presets[input.preset.value];
+          if (!p) return;
+          input.label.value = p.label;
+          input.value.value = p.value;
+          input.icon.value = p.icon;
+          input.theme.value = p.theme;
+          input.style.value = p.style;
+          render();
+        });
 
-  updateCode();
-}
-
-function updateCode() {
-  const base = window.location.origin;
-  const abs = base + lastUrl;
-  let code = '';
-  if (outputTab === 'markdown') {
-    code = `![GitHub Stats](${abs})`;
-  } else if (outputTab === 'html') {
-    code = `<img src="${abs}" alt="GitHub Stats" />`;
-  } else {
-    code = abs;
-  }
-  document.getElementById('code-out').textContent = code;
-}
-
-function copyCode() {
-  navigator.clipboard.writeText(document.getElementById('code-out').textContent).then(() => {
-    const b = document.getElementById('copy-btn');
-    b.textContent = '✓ Copied'; b.classList.add('ok');
-    setTimeout(() => { b.textContent = 'Copy'; b.classList.remove('ok'); }, 2000);
-  });
-}
-
-// Initial render
-generate();
-</script>
+        input.preset.value = "build";
+        input.style.value = "flat";
+        input.theme.value = "terminal";
+        input.icon.value = "check";
+        render();
+      })
+      .catch(() => {
+        preview.textContent = "Failed to load catalog.";
+      });
+  </script>
 </body>
 </html>
