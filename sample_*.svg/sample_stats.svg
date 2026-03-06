@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="495" height="195" viewBox="0 0 495 195">
+  
+    <style>
+      @keyframes fadeIn { from {opacity:0;transform:translateX(-8px)} to {opacity:1;transform:translateX(0)} }
+      @keyframes scaleIn { from {opacity:0;transform:scale(0)} to {opacity:1;transform:scale(1)} }
+      @keyframes growBar { from {stroke-dashoffset:251} to {stroke-dashoffset:239.7} }
+      .stat-row { opacity:0; animation: fadeIn .5s ease forwards; }
+      .rank-circle { opacity:0; animation: scaleIn .6s ease .4s forwards; transform-origin: center; }
+      .rank-bar { animation: growBar 1s ease .5s forwards; stroke-dashoffset: 251; }
+    </style>
+  <rect x="0.5" y="0.5" width="494" height="194" rx="10" ry="10"
+    fill="#0d1117" stroke="#30363d" stroke-width="1" />
+  <text x="25" y="30" fill="#58a6ff" font-size="16" font-weight="700"
+    font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">OstinUA&#39;s GitHub Stats</text>
+    <g class="stat-row" style="animation-delay:0ms" transform="translate(25, 48)">
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="#58a6ff"><path d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z"/></svg>
+      <text x="24" y="12" fill="#c9d1d9" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">Total Stars:</text>
+      <text x="190" y="12" fill="#c9d1d9" font-size="13" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">156</text>
+    </g>
+    <g class="stat-row" style="animation-delay:100ms" transform="translate(25, 76)">
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="#58a6ff"><path d="M11.93 8.5a4.002 4.002 0 01-7.86 0H.75a.75.75 0 010-1.5h3.32a4.002 4.002 0 017.86 0h3.32a.75.75 0 010 1.5zm-1.43-.25a2.5 2.5 0 10-5 0 2.5 2.5 0 005 0z"/></svg>
+      <text x="24" y="12" fill="#c9d1d9" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">Total Commits:</text>
+      <text x="190" y="12" fill="#c9d1d9" font-size="13" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">1.2k</text>
+    </g>
+    <g class="stat-row" style="animation-delay:200ms" transform="translate(25, 104)">
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="#58a6ff"><path d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 100 1.5.75.75 0 000-1.5zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z"/></svg>
+      <text x="24" y="12" fill="#c9d1d9" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">Total PRs:</text>
+      <text x="190" y="12" fill="#c9d1d9" font-size="13" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">83</text>
+    </g>
+    <g class="stat-row" style="animation-delay:300ms" transform="translate(25, 132)">
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="#58a6ff"><path d="M8 9.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/><path d="M8 0a8 8 0 100 16A8 8 0 008 0zM1.5 8a6.5 6.5 0 1113 0 6.5 6.5 0 01-13 0z"/></svg>
+      <text x="24" y="12" fill="#c9d1d9" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">Total Issues:</text>
+      <text x="190" y="12" fill="#c9d1d9" font-size="13" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">42</text>
+    </g>
+    <g class="stat-row" style="animation-delay:400ms" transform="translate(25, 160)">
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="#58a6ff"><path d="M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5zm10.5-1h-8a1 1 0 00-1 1v6.708A2.486 2.486 0 014.5 9h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z"/></svg>
+      <text x="24" y="12" fill="#c9d1d9" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">Contributed to:</text>
+      <text x="190" y="12" fill="#c9d1d9" font-size="13" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">28</text>
+    </g>
+    <g class="rank-circle" transform="translate(420,105)">
+      <circle r="40" fill="none" stroke="#161b22" stroke-width="6" />
+      <circle class="rank-bar" r="40" fill="none" stroke="#58a6ff" stroke-width="6"
+        stroke-dasharray="251.3" stroke-dashoffset="240.0"
+        stroke-linecap="round" transform="rotate(-90)" style="animation:growBar 1s ease .5s forwards;stroke-dashoffset:251.32741228718345" />
+      <text x="0" y="8" text-anchor="middle" fill="#58a6ff" font-size="22" font-weight="800"
+        font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">S+</text>
+    </g>
+</svg>
