@@ -1,13 +1,10 @@
 {
+  "version": 2,
   "builds": [
     { "src": "api/stats_index.py", "use": "@vercel/python" }
   ],
   "routes": [
-    { "src": "/stats", "dest": "/api/stats_index.py" },
-    { "src": "/streak", "dest": "/api/stats_index.py" },
-    { "src": "/graph", "dest": "/api/stats_index.py" },
-    { "src": "/views", "dest": "/api/stats_index.py" },
-    { "src": "/themes", "dest": "/api/stats_index.py" },
-    { "src": "/(.*)", "dest": "/api/stats_index.py" }
+    { "src": "^/$", "dest": "/api/stats_index.py" },
+    { "src": "^/(stats|streak|graph|views|themes)$", "dest": "/api/stats_index.py" }
   ]
 }
