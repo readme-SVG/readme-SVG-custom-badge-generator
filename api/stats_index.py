@@ -7,13 +7,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from flask import Flask, Response, request
 from github_stats import generate_stats_card, generate_streak_card, generate_graph_card, generate_views_card, THEMES
-
-try:
-    from github import Github, Auth
-    _gh_token = os.environ.get("GITHUB_TOKEN")
-    _gh = Github(auth=Auth.Token(_gh_token)) if _gh_token else None
-except Exception:
-    _gh = None
+from data_fetchers import fetch_user_stats
 
 app = Flask(__name__)
 
@@ -33,19 +27,7 @@ def _param_bool(key, default=False):
     return default
 
 def _svg_response(svg):
-    return Response(svg, mimetype="image/svg+xml", headers={"Cache-Control":"public, max-age=1800, s-maxage=1800","Access-Control-Allow-Origin":"*"})
-
-def _fetch_user_stats(username):
-    if _gh:
-        try:
-            user = _gh.get_user(username)
-            repos = list(user.get_repos(type="owner"))
-            stars = sum(r.stargazers_count for r in repos)
-            return {"stars":stars,"commits":user.public_repos*15,"prs":user.public_repos*3,"issues":user.public_repos*2,"contribs":user.public_repos*8,"followers":user.followers}
-        except Exception:
-            pass
-    seed = int(hashlib.md5(username.encode()).hexdigest()[:8], 16)
-    return {"stars":50+seed%500,"commits":200+(seed>>4)%2000,"prs":20+(seed>>8)%200,"issues":10+(seed>>12)%100,"contribs":30+(seed>>16)%80,"followers":10+seed%300}
+    return Response(svg, mimetype="image/svg+xml", headers={"Cache-Control":"public, max-age=86400, s-maxage=86400","Access-Control-Allow-Origin":"*"})
 
 def _fetch_streak_data(username):
     seed = int(hashlib.md5(username.encode()).hexdigest()[:8], 16)
@@ -69,7 +51,7 @@ def index():
 def stats_card():
     username = _param("username","octocat")
     theme = _param("theme","dark")
-    data = _fetch_user_stats(username)
+    data = fetch_user_stats(username)
     svg = generate_stats_card(
         username=username,
         stars=_param_int("stars",data["stars"]),

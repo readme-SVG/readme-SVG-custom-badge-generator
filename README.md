@@ -45,9 +45,11 @@ This repo is intentionally lean, but it still packs a lot of practical functiona
 - Accepts **runtime query params** to override title, colors, border radius, and selected behavioral flags.
 - Ships with **animation toggles** (`animate=true|false`) across card generators.
 - Includes deterministic fallback data based on username hash when live GitHub token-backed reads are not available.
+- Pulls live GitHub stars plus recent public activity (commits/PRs/issues) and caches it for 24h to reduce API pressure.
 - Returns production-friendly SVG responses with cache headers and CORS enabled for embedding.
 - Includes a simple interactive HTML playground (`/`) for quick parameter testing.
 - Exposes `/themes` JSON endpoint so integrators can introspect available theme keys programmatically.
+- Includes a daily GitHub Actions workflow that refreshes sample SVG files automatically.
 
 > [!TIP]
 > If you need reproducible screenshots or deterministic preview snapshots, pass explicit numeric params (for example `stars`, `commits`, `count`) instead of relying on runtime data.
@@ -177,6 +179,15 @@ Routing is configured so:
 
 - `/` -> HTML playground
 - `/stats`, `/streak`, `/graph`, `/views`, `/themes` -> Flask serverless function
+
+### Daily auto-refresh for README assets
+
+Repository includes `.github/workflows/daily-stats-refresh.yml` which rebuilds `sample_*.svg/*.svg` once per day and pushes updates automatically.
+
+To customize behavior, set environment variables in the workflow step:
+
+- `SVG_STATS_USERNAME` (default: repository owner)
+- `SVG_STATS_THEME` (default: `dark`)
 
 ### Self-hosting (Flask process)
 
