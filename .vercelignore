@@ -1,7 +1,8 @@
-# Exclude Python files, scripts, and the Express server from deployment
+# Exclude local tooling, tests, and the Express server from deployment.
 api/**/*.py
 scripts/
 server/
+tests/
 requirements.txt
 process_event.py
 trigger action/

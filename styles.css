@@ -686,7 +686,18 @@ details.ctrl-section[open] .ctrl-chevron {
 
 .toggle-item:hover { background: var(--state-hover); }
 
-.toggle-check { display: none; }
+.toggle-check {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  clip-path: inset(50%);
+}
+
+.toggle-check:focus-visible + .toggle-indicator {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 
 /* MD3 Switch Track */
 .toggle-indicator {
@@ -835,9 +846,15 @@ details.ctrl-section[open] .ctrl-chevron {
 
 .upload-btn input[type="file"] {
   position: absolute;
-  width: 0; height: 0;
+  width: 1px;
+  height: 1px;
   opacity: 0;
-  pointer-events: none;
+  clip-path: inset(50%);
+}
+
+.upload-btn:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .icon-preview-img {

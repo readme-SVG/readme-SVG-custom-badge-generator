@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import math
 import re
 from dataclasses import dataclass
 
@@ -28,7 +29,7 @@ ICON_SET = {
 }
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class BadgeStyle:
     name: str
     radius: int
@@ -60,31 +61,33 @@ SIZE_MAP = {
     "xl": 1.32,
 }
 
-HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+HEX_RE = re.compile(r"#[0-9a-fA-F]{6}")
+INVALID_XML_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]")
 
 
 def _esc(value: str) -> str:
-    return html.escape(value, quote=True)
+    return html.escape(INVALID_XML_RE.sub("\ufffd", value), quote=True)
 
 
 def _safe_color(candidate: str | None, fallback: str) -> str:
-    if not candidate:
+    if not isinstance(candidate, str):
         return fallback
     candidate = candidate.strip()
-    return candidate if HEX_RE.match(candidate) else fallback
+    return candidate if HEX_RE.fullmatch(candidate) else fallback
 
 
 def _safe_int(value: int, lo: int, hi: int, fallback: int) -> int:
     try:
         return min(max(int(value), lo), hi)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return fallback
 
 
 def _safe_float(value: float, lo: float, hi: float, fallback: float) -> float:
     try:
-        return min(max(float(value), lo), hi)
-    except (TypeError, ValueError):
+        parsed = float(value)
+        return min(max(parsed, lo), hi) if math.isfinite(parsed) else fallback
+    except (TypeError, ValueError, OverflowError):
         return fallback
 
 
@@ -98,30 +101,26 @@ def _text_width(value: str, font_size: int, uppercase: bool) -> int:
     return int(max(1, len(text)) * font_size * multiplier)
 
 
-def _style_border(style_name: str, border_width: int, border_color: str) -> str:
+def _style_border(style_name: str, border_width: int, border_color: str) -> tuple[str | None, str]:
     if border_width <= 0:
         return None, ""
-    if style_name == "outline":
-        return "none", f' stroke="{_esc(border_color)}" stroke-width="{border_width}"'
-    return None, f' stroke="{_esc(border_color)}" stroke-width="{border_width}"'
+    fill = "none" if style_name == "outline" else None
+    return fill, f' stroke="{_esc(border_color)}" stroke-width="{border_width}"'
 
 
 _DATA_URI_RE = re.compile(
-    r"^data:image/(?:png|jpeg|gif|svg\+xml|webp);base64,[A-Za-z0-9+/=]+$"
+    r"data:image/(?:png|jpeg|gif|svg\+xml|webp);base64,"
+    r"(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?"
 )
 
-MAX_ICON_DATA_LEN = 200_000  # ~150 KB image after base64 encoding
+MAX_ICON_DATA_LEN = 200_000  # Approximately 150 KB of decoded image data.
 
 
 def _validate_icon_data(data_uri: str | None) -> str | None:
-    """Return sanitised data-URI or None if invalid / too large."""
-    if not data_uri:
+    """Accept bounded, canonical base64 image data URIs."""
+    if not isinstance(data_uri, str) or data_uri.endswith(",") or len(data_uri) > MAX_ICON_DATA_LEN:
         return None
-    if len(data_uri) > MAX_ICON_DATA_LEN:
-        return None
-    if not _DATA_URI_RE.match(data_uri):
-        return None
-    return data_uri
+    return data_uri if _DATA_URI_RE.fullmatch(data_uri) else None
 
 
 def generate_custom_badge(
@@ -135,7 +134,7 @@ def generate_custom_badge(
     label_color: str | None = None,
     value_color: str | None = None,
     border_color: str | None = None,
-    border_radius: int = 4,
+    border_radius: int | None = None,
     gradient: bool = False,
     uppercase: bool = False,
     compact: bool = False,

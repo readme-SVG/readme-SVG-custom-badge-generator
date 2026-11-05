@@ -1,8 +1,4 @@
-/**
- * Badge Renderer Service
- * Server-side SVG badge generation engine.
- * Ported from app.js client-side engine, following DenverCoder1/custom-icon-badges architecture.
- */
+/** SVG rendering for the optional Express API. */
 
 const FONT = "Verdana,DejaVu Sans,sans-serif";
 
@@ -83,6 +79,7 @@ export const PRESETS: Record<string, BadgePreset> = {
 
 function esc(s: string): string {
   return String(s)
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uD800-\uDFFF\uFFFE\uFFFF]/gu, "\uFFFD")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -94,23 +91,30 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.min(Math.max(v, lo), hi);
 }
 
+function getOption<T>(options: Record<string, T>, key: string, fallback: T): T {
+  return Object.prototype.hasOwnProperty.call(options, key) ? options[key] : fallback;
+}
+
 function isHex(s: string | undefined | null): boolean {
   return typeof s === "string" && /^#[0-9a-fA-F]{6}$/.test(s.trim());
 }
 
 function textWidth(text: string, fontSize: number): number {
   const multiplier = fontSize >= 12 ? 0.62 : 0.58;
-  return Math.floor(Math.max(1, text.length) * fontSize * multiplier);
+  return Math.floor(Math.max(1, Array.from(text).length) * fontSize * multiplier);
 }
 
-const DATA_URI_RE = /^data:image\/(?:png|jpeg|gif|svg\+xml|webp);base64,[A-Za-z0-9+/=]+$/;
-const MAX_ICON_DATA_LEN = 200_000;
+const DATA_URI_RE = /^data:image\/(?:png|jpeg|gif|svg\+xml|webp);base64,(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+export const MAX_ICON_DATA_LEN = 200_000;
 
-function validateIconData(dataUri: string | undefined | null): string | null {
-  if (!dataUri) return null;
-  if (dataUri.length > MAX_ICON_DATA_LEN) return null;
-  if (!DATA_URI_RE.test(dataUri)) return null;
-  return dataUri;
+export function validateIconData(dataUri: string | undefined | null): string | null {
+  if (typeof dataUri !== "string" || dataUri.endsWith(",") || dataUri.length > MAX_ICON_DATA_LEN) return null;
+  const match = DATA_URI_RE.exec(dataUri);
+  return match && match[0].length === dataUri.length ? dataUri : null;
+}
+
+export function getBuiltinIcon(slug: string): string | null {
+  return Object.prototype.hasOwnProperty.call(ICONS, slug) ? ICONS[slug] : null;
 }
 
 // ── Badge generation parameters ──
@@ -158,18 +162,16 @@ export function generateBadge(opts: BadgeParams = {}): string {
     compact = false,
   } = opts;
 
-  const profile = STYLES[style] || STYLES["flat"];
-  const palette = THEMES[theme] || THEMES["dark"];
+  const profile = getOption(STYLES, style, STYLES.flat);
+  const palette = getOption(THEMES, theme, THEMES.dark);
 
-  // Text content
   const activeUppercase = profile.uppercase || uppercase;
-  const rawLabel = String(label || "label").slice(0, 40);
-  const rawValue = String(value || "value").slice(0, 52);
+  const rawLabel = Array.from(String(label || "label")).slice(0, 40).join("");
+  const rawValue = Array.from(String(value || "value")).slice(0, 52).join("");
 
-  // Icon resolution
   const validatedIconData = validateIconData(iconData);
   const hasCustomIcon = !!validatedIconData;
-  const symbol = hasCustomIcon ? "" : (ICONS[icon] || "");
+  const symbol = hasCustomIcon ? "" : (getBuiltinIcon(icon) || "");
   const fullLabelText = symbol ? `${symbol} ${rawLabel}`.trim() : rawLabel;
 
   // Colors
@@ -180,8 +182,9 @@ export function generateBadge(opts: BadgeParams = {}): string {
   const bdr  = isHex(borderColor) ? borderColor!.trim() : palette.border;
 
   // Scaling
-  const sizeFactor    = SIZES[size] || 1.0;
-  const scaleFactor   = clamp(parseFloat(String(scale)) || 1.0, 0.7, 2.0);
+  const sizeFactor    = getOption(SIZES, size, 1.0);
+  const parsedScale   = Number.parseFloat(String(scale));
+  const scaleFactor   = Number.isFinite(parsedScale) ? clamp(parsedScale, 0.7, 2.0) : 1.0;
   const compactFactor = compact ? 0.88 : 1.0;
   const factor        = sizeFactor * scaleFactor * compactFactor;
 

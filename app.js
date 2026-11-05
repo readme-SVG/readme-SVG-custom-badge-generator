@@ -1,68 +1,12 @@
-/**
- * Badge Forge — app.js
- * Client-side SVG badge generator. Zero backend required.
- * Faithfully ports the Python/Flask badge rendering engine to pure JS.
- *
- * Architecture:
- *   CONSTANTS  → badge styles, themes, sizes, icons, presets, palette
- *   ENGINE     → SVG generation (textWidth, generateBadge)
- *   STATE      → reactive badge parameters object
- *   UI         → DOM wiring, gallery, color sync, icon picker, toast
- */
-
 'use strict';
 
-/* ═══════════════════════════════════════════════════════════════
-   CONSTANTS — mirror the Python backend exactly
-   ═══════════════════════════════════════════════════════════════ */
+// Browser controls; badge-core.js provides the renderer shared with the API.
 
-const FONT = 'Verdana,DejaVu Sans,sans-serif';
-
-/** @type {Record<string, {radius:number, fontSize:number, fontWeight:string, padX:number, height:number, uppercase:boolean, borderWidth:number}>} */
-const STYLES = {
-  'flat':          { radius: 4,   fontSize: 11, fontWeight: '600', padX: 10, height: 24, uppercase: false, borderWidth: 0 },
-  'flat-square':   { radius: 0,   fontSize: 11, fontWeight: '600', padX: 10, height: 24, uppercase: false, borderWidth: 0 },
-  'for-the-badge': { radius: 4,   fontSize: 12, fontWeight: '700', padX: 12, height: 28, uppercase: true,  borderWidth: 0 },
-  'plastic':       { radius: 4,   fontSize: 11, fontWeight: '700', padX: 10, height: 24, uppercase: false, borderWidth: 1 },
-  'social':        { radius: 3,   fontSize: 11, fontWeight: '600', padX: 10, height: 24, uppercase: false, borderWidth: 1 },
-  'rounded':       { radius: 12,  fontSize: 11, fontWeight: '600', padX: 11, height: 24, uppercase: false, borderWidth: 0 },
-  'pill':          { radius: 999, fontSize: 11, fontWeight: '700', padX: 12, height: 24, uppercase: false, borderWidth: 0 },
-  'outline':       { radius: 6,   fontSize: 11, fontWeight: '600', padX: 10, height: 24, uppercase: false, borderWidth: 1 },
-  'soft':          { radius: 8,   fontSize: 11, fontWeight: '600', padX: 11, height: 24, uppercase: false, borderWidth: 0 },
-};
-
-const STYLE_ORDER = ['flat','flat-square','for-the-badge','plastic','social','rounded','pill','outline','soft'];
-
-/** @type {Record<string, {labelBg:string, labelText:string, valueBg:string, valueText:string, border:string}>} */
-const THEMES = {
-  'dark':     { labelBg: '#1f2937', labelText: '#f3f4f6', valueBg: '#111827', valueText: '#93c5fd', border: '#374151' },
-  'light':    { labelBg: '#f3f4f6', labelText: '#111827', valueBg: '#ffffff', valueText: '#1d4ed8', border: '#d1d5db' },
-  'neon':     { labelBg: '#151026', labelText: '#67e8f9', valueBg: '#1e1237', valueText: '#c4b5fd', border: '#7c3aed' },
-  'sunset':   { labelBg: '#7c2d12', labelText: '#ffedd5', valueBg: '#9a3412', valueText: '#fde68a', border: '#fdba74' },
-  'terminal': { labelBg: '#052e16', labelText: '#dcfce7', valueBg: '#14532d', valueText: '#86efac', border: '#22c55e' },
-};
-
-const THEME_ORDER = ['dark','light','neon','sunset','terminal'];
-
-/** @type {Record<string, number>} */
-const SIZES = { xs: 0.82, sm: 0.92, md: 1.0, lg: 1.16, xl: 1.32 };
-const SIZE_ORDER = ['xs','sm','md','lg','xl'];
-
-/** @type {Record<string, string>} Built-in icon characters */
-const ICONS = {
-  'none':   '',
-  'star':   '★',
-  'heart':  '❤',
-  'check':  '✓',
-  'fire':   '🔥',
-  'bolt':   '⚡',
-  'rocket': '🚀',
-  'code':   '⌘',
-  'build':  '⚙',
-  'docs':   '📘',
-};
-
-const ICON_ORDER = ['none','star','heart','check','fire','bolt','rocket','code','build','docs'];
+const { STYLES, THEMES, SIZES, ICONS, generateBadge, isHex, escapeXml, getHttpsIconUrl } = BadgeCore;
+const STYLE_ORDER = Object.keys(STYLES);
+const THEME_ORDER = Object.keys(THEMES);
+const SIZE_ORDER = Object.keys(SIZES);
+const ICON_ORDER = Object.keys(ICONS);
 
 /** Presets — match data_fetchers.py BADGE_PRESETS */
 const PRESETS = {
@@ -79,172 +23,6 @@ const COLOR_PALETTE = [
   '#7c3aed','#a855f7','#db2777','#ef4444','#f97316','#f59e0b',
   '#84cc16','#22c55e','#10b981','#14b8a6','#8b5cf6','#ec4899',
 ];
-
-/* ═══════════════════════════════════════════════════════════════
-   SVG BADGE ENGINE
-   ═══════════════════════════════════════════════════════════════ */
-
-/** Escape XML/SVG special chars */
-function esc(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-/** Clamp a value between lo and hi */
-function clamp(v, lo, hi) { return Math.min(Math.max(v, lo), hi); }
-
-/** Validate a 6-digit hex color string */
-function isHex(s) { return typeof s === 'string' && /^#[0-9a-fA-F]{6}$/.test(s.trim()); }
-
-/**
- * Estimate rendered text width — mirrors Python _text_width().
- * Uses character-count heuristic (no canvas measurement needed).
- */
-function textWidth(text, fontSize) {
-  const multiplier = fontSize >= 12 ? 0.62 : 0.58;
-  return Math.floor(Math.max(1, text.length) * fontSize * multiplier);
-}
-
-/**
- * Generate an SVG badge string from parameters.
- * Faithfully ports api/github_stats.py → generate_custom_badge().
- *
- * @param {object} opts
- * @returns {string} SVG markup
- */
-function generateBadge(opts) {
-  const {
-    label       = 'build',
-    value       = 'passing',
-    icon        = 'none',
-    iconData    = '',        // base64 data URI of custom uploaded image
-    iconUrl     = '',        // public URL for custom icon (used in live preview)
-    style       = 'flat',
-    theme       = 'dark',
-    size        = 'md',
-    scale       = 1.0,
-    labelBg     = '',
-    valueBg     = '',
-    labelColor  = '',
-    valueColor  = '',
-    borderColor = '',
-    borderRadius = null,     // null = use style default
-    gradient    = false,
-    uppercase   = false,
-    compact     = false,
-  } = opts;
-
-  const profile = STYLES[style] || STYLES['flat'];
-  const palette = THEMES[theme] || THEMES['dark'];
-
-  /* ── Text content ── */
-  const activeUppercase = profile.uppercase || uppercase;
-  const rawLabel = String(label || 'label').slice(0, 40);
-  const rawValue = String(value || 'value').slice(0, 52);
-
-  /* ── Icon resolution ── */
-  const hasDataIcon = typeof iconData === 'string' && iconData.startsWith('data:image/');
-  const hasUrlIcon = typeof iconUrl === 'string' && iconUrl.startsWith('https://');
-  const hasCustomIcon = hasDataIcon || hasUrlIcon;
-  const customIconHref = hasDataIcon ? iconData : (hasUrlIcon ? iconUrl : '');
-  const symbol = hasCustomIcon ? '' : (ICONS[icon] || '');
-  const fullLabelText = (symbol && !hasCustomIcon) ? `${symbol} ${rawLabel}`.trim() : rawLabel;
-
-  /* ── Colors ── */
-  const lbg  = isHex(labelBg)     ? labelBg.trim()     : palette.labelBg;
-  const vbg  = isHex(valueBg)     ? valueBg.trim()     : palette.valueBg;
-  const ltxt = isHex(labelColor)  ? labelColor.trim()  : palette.labelText;
-  const vtxt = isHex(valueColor)  ? valueColor.trim()  : palette.valueText;
-  const bdr  = isHex(borderColor) ? borderColor.trim() : palette.border;
-
-  /* ── Scaling ── */
-  const sizeFactor    = SIZES[size] || 1.0;
-  const scaleFactor   = clamp(parseFloat(scale) || 1.0, 0.7, 2.0);
-  const compactFactor = compact ? 0.88 : 1.0;
-  const factor        = sizeFactor * scaleFactor * compactFactor;
-
-  /* ── Dimensions (pre-scale base values, then round after scaling) ── */
-  const basePad    = profile.padX;
-  const baseFont   = profile.fontSize;
-  const baseHeight = profile.height;
-  const baseRadius = (borderRadius !== null)
-    ? clamp(parseInt(borderRadius, 10) || 0, 0, 999)
-    : profile.radius;
-
-  const height   = Math.max(16, Math.round(baseHeight * factor));
-  const padX     = Math.max(5,  Math.round(basePad    * factor));
-  const fontSize = Math.max(9,  Math.round(baseFont   * factor));
-  const radius   = Math.min(Math.round(baseRadius * factor), Math.floor(height / 2));
-
-  /* ── Icon space ── */
-  const iconSize       = hasCustomIcon ? Math.round(height * 0.65) : 0;
-  const iconPad        = hasCustomIcon ? Math.round(iconSize * 0.4) : 0;
-  const iconTotalSpace = hasCustomIcon ? iconSize + iconPad : 0;
-
-  /* ── Width calculation ── */
-  const labelRender = activeUppercase ? fullLabelText.toUpperCase() : fullLabelText;
-  const valueRender = activeUppercase ? rawValue.toUpperCase()      : rawValue;
-
-  const leftWidth  = textWidth(labelRender, fontSize) + 2 * padX + iconTotalSpace;
-  const rightWidth = textWidth(valueRender, fontSize) + 2 * padX;
-  const totalWidth = leftWidth + rightWidth;
-
-  /* ── Outline style: transparent fill, only stroke ── */
-  const isOutline  = style === 'outline';
-  const leftFill   = isOutline ? 'none' : lbg;
-  const rightFill  = isOutline ? 'none' : vbg;
-  const borderAttr = profile.borderWidth > 0
-    ? ` stroke="${esc(bdr)}" stroke-width="${profile.borderWidth}"`
-    : '';
-
-  /* ── Gradient overlay (plastic-style) ── */
-  let defs    = '';
-  let overlay = '';
-  if (gradient) {
-    defs = `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-<stop offset="0" stop-color="#ffffff" stop-opacity="0.42"/>
-<stop offset="0.49" stop-color="#ffffff" stop-opacity="0.10"/>
-<stop offset="0.5" stop-color="#000000" stop-opacity="0.10"/>
-<stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
-</linearGradient></defs>`;
-    overlay = `<rect x="0" y="0" width="${totalWidth}" height="${height}" fill="url(#g)" rx="${radius}" ry="${radius}"/>`;
-  }
-
-  /* ── Text Y position — mirrors Python: height/2 + fontSize*0.33 ── */
-  const textY = (height / 2) + (fontSize * 0.33);
-
-  /* ── Icon SVG ── */
-  let iconSvg      = '';
-  let labelTextX   = leftWidth / 2;
-
-  if (hasCustomIcon) {
-    const ix = padX;
-    const iy = (height - iconSize) / 2;
-    iconSvg    = `<image x="${ix}" y="${iy}" width="${iconSize}" height="${iconSize}" href="${esc(customIconHref)}"/>`;
-    labelTextX = iconTotalSpace + padX + textWidth(labelRender, fontSize) / 2;
-  }
-
-  /* ── Junction fill rect: covers the right-concave corner of the left rect ── */
-  const junctionX    = Math.max(0, leftWidth - radius);
-  const junctionFill = isOutline ? 'none' : lbg;
-
-  /* ── Compose SVG ── */
-  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalWidth}" height="${height}" role="img" aria-label="${esc(labelRender)}: ${esc(valueRender)}">
-<title>${esc(labelRender)}: ${esc(valueRender)}</title>
-${defs}
-<rect x="0" y="0" width="${leftWidth}" height="${height}" fill="${esc(leftFill)}" rx="${radius}" ry="${radius}"${borderAttr}/>
-<rect x="${leftWidth}" y="0" width="${rightWidth}" height="${height}" fill="${esc(rightFill)}" rx="${radius}" ry="${radius}"${borderAttr}/>
-<rect x="${junctionX}" y="0" width="${radius}" height="${height}" fill="${esc(junctionFill)}"/>
-${iconSvg}
-<text x="${labelTextX}" y="${textY.toFixed(1)}" fill="${esc(ltxt)}" font-size="${fontSize}" font-family="${FONT}" font-weight="${profile.fontWeight}" text-anchor="middle">${esc(labelRender)}</text>
-<text x="${leftWidth + rightWidth / 2}" y="${textY.toFixed(1)}" fill="${esc(vtxt)}" font-size="${fontSize}" font-family="${FONT}" font-weight="${profile.fontWeight}" text-anchor="middle">${esc(valueRender)}</text>
-${overlay}
-</svg>`.trim();
-}
 
 /* ═══════════════════════════════════════════════════════════════
    STATE
@@ -273,6 +51,7 @@ const DEFAULT_STATE = {
 };
 
 let state = { ...DEFAULT_STATE };
+let iconSelection = 0;
 
 /* ═══════════════════════════════════════════════════════════════
    UI HELPERS
@@ -299,9 +78,15 @@ async function copyText(text, label = 'Copied') {
     ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
     document.body.appendChild(ta);
     ta.select();
-    document.execCommand('copy');
-    ta.remove();
-    showToast(`${label} copied!`);
+    let copied = false;
+    try {
+      copied = document.execCommand('copy');
+    } catch {
+      // Clipboard APIs are unavailable in this browser context.
+    } finally {
+      ta.remove();
+    }
+    showToast(copied ? `${label} copied!` : 'Unable to copy text');
   }
 }
 
@@ -313,7 +98,7 @@ function downloadSVG(svgString, filename = 'badge.svg') {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
   showToast('SVG downloaded!');
 }
 
@@ -330,11 +115,48 @@ function popPreview() {
    RENDER — build badge and push to DOM
    ═══════════════════════════════════════════════════════════════ */
 
-let _currentSvg = '';
+let currentSvg = '';
+let galleryFrame = 0;
+
+function getEmbedOutputs(options, origin) {
+  const label = options.label || 'label';
+  const value = options.value || 'value';
+  const alt = `${label}: ${value}`;
+  const apiUrl = new URL('/api/badge', origin);
+  const query = apiUrl.searchParams;
+
+  query.set('label', label);
+  query.set('value', value);
+  query.set('style', options.style || 'flat');
+  query.set('theme', options.theme || 'dark');
+  query.set('size', options.size || 'md');
+  query.set('icon', options.icon || 'none');
+  query.set('scale', String(options.scale ?? 1));
+
+  const iconUrl = getHttpsIconUrl(options.iconUrl);
+  if (iconUrl) query.set('iconUrl', iconUrl);
+  if (options.iconData && !iconUrl) query.set('iconData', options.iconData);
+  for (const key of ['labelBg', 'valueBg', 'labelColor', 'valueColor', 'borderColor']) {
+    if (options[key]) query.set(key, options[key]);
+  }
+  if (options.borderRadius !== null && options.borderRadius !== undefined) {
+    query.set('borderRadius', String(options.borderRadius));
+  }
+  if (options.gradient) query.set('gradient', '1');
+  if (options.uppercase) query.set('uppercase', '1');
+  if (options.compact) query.set('compact', '1');
+
+  const url = apiUrl.toString();
+  const markdownAlt = alt.replace(/[\\\[\]]/g, '\\$&').replace(/[\r\n]/g, ' ');
+  return {
+    markdown: `![${markdownAlt}](${url})`,
+    html: `<img src="${escapeXml(url)}" alt="${escapeXml(alt)}" />`,
+  };
+}
 
 function render() {
   const svg = generateBadge(state);
-  _currentSvg = svg;
+  currentSvg = svg;
 
   /* Preview */
   const wrap = document.getElementById('previewSvgWrap');
@@ -348,46 +170,17 @@ function render() {
       `${svgEl.getAttribute('width')} × ${svgEl.getAttribute('height')} px`;
   }
 
-  /* Markdown output — API endpoint renders badge with current state params */
-  const label = state.label || 'label';
-  const value = state.value || 'value';
-  const alt   = `${label}: ${value}`;
-  const apiUrl = new URL('/api/badge', window.location.origin);
-  const query = apiUrl.searchParams;
-
-  query.set('label', label);
-  query.set('value', value);
-  query.set('style', state.style || 'flat');
-  query.set('theme', state.theme || 'dark');
-  query.set('size', state.size || 'md');
-  query.set('icon', state.icon || 'none');
-  query.set('scale', String(state.scale ?? 1));
-
-  if (state.iconUrl) query.set('iconUrl', state.iconUrl);
-  if (state.iconData) query.set('iconData', state.iconData);
-  if (state.labelBg) query.set('labelBg', state.labelBg);
-  if (state.valueBg) query.set('valueBg', state.valueBg);
-  if (state.labelColor) query.set('labelColor', state.labelColor);
-  if (state.valueColor) query.set('valueColor', state.valueColor);
-  if (state.borderColor) query.set('borderColor', state.borderColor);
-  if (state.borderRadius !== null && state.borderRadius !== undefined) {
-    query.set('borderRadius', String(state.borderRadius));
-  }
-  if (state.gradient) query.set('gradient', '1');
-  if (state.uppercase) query.set('uppercase', '1');
-  if (state.compact) query.set('compact', '1');
-
-  const markdownUrl = apiUrl.toString();
-  document.getElementById('outputMarkdown').value = `![${alt}](${markdownUrl})`;
-
-  /* HTML <img> output */
-  document.getElementById('outputHtml').value = `<img src="${markdownUrl}" alt="${alt}" />`;
-
-  /* SVG output */
+  const outputs = getEmbedOutputs(state, window.location.origin);
+  document.getElementById('outputMarkdown').value = outputs.markdown;
+  document.getElementById('outputHtml').value = outputs.html;
   document.getElementById('outputSvg').value = svg;
 
-  /* Update galleries in background */
-  requestAnimationFrame(updateGalleries);
+  if (!galleryFrame) {
+    galleryFrame = requestAnimationFrame(() => {
+      galleryFrame = 0;
+      updateGalleries();
+    });
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -405,7 +198,12 @@ function buildGalleryItem(svg, labelText, clickFn) {
   span.textContent = labelText;
   div.appendChild(span);
   div.addEventListener('click', clickFn);
-  div.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') clickFn(); });
+  div.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      clickFn();
+    }
+  });
   return div;
 }
 
@@ -415,6 +213,7 @@ function updateGalleries() {
     value:       state.value,
     icon:        state.icon,
     iconData:    state.iconData,
+    iconUrl:     state.iconUrl,
     size:        'md',
     scale:       1.0,
     gradient:    state.gradient,
@@ -428,32 +227,29 @@ function updateGalleries() {
     borderRadius: null,
   };
 
-  /* ── Style Gallery ── */
-  const styleGrid = document.getElementById('galleryStyles');
-  styleGrid.innerHTML = '';
-  for (const styleName of STYLE_ORDER) {
+  const styleItems = STYLE_ORDER.map(styleName => {
     const svg = generateBadge({ ...baseOpts, style: styleName, theme: state.theme });
-    styleGrid.appendChild(buildGalleryItem(svg, styleName, () => {
+    return buildGalleryItem(svg, styleName, () => {
       state.style = styleName;
+      state.borderRadius = null;
       document.getElementById('inputStyle').value = styleName;
+      syncRadiusField();
       render();
-    }));
-  }
+    });
+  });
+  document.getElementById('galleryStyles').replaceChildren(...styleItems);
 
-  /* ── Theme Gallery ── */
-  const themeGrid = document.getElementById('galleryThemes');
-  themeGrid.innerHTML = '';
-  for (const themeName of THEME_ORDER) {
+  const themeItems = THEME_ORDER.map(themeName => {
     const svg = generateBadge({ ...baseOpts, style: state.style, theme: themeName });
-    themeGrid.appendChild(buildGalleryItem(svg, themeName, () => {
+    return buildGalleryItem(svg, themeName, () => {
       state.theme = themeName;
       document.getElementById('inputTheme').value = themeName;
-      // Reset color overrides when switching theme
       state.labelBg = state.valueBg = state.labelColor = state.valueColor = state.borderColor = '';
       syncColorFieldsFromTheme();
       render();
-    }));
-  }
+    });
+  });
+  document.getElementById('galleryThemes').replaceChildren(...themeItems);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -564,12 +360,15 @@ function initIconPicker() {
     if (key === state.icon) btn.classList.add('active');
 
     btn.addEventListener('click', () => {
+      iconSelection++;
       state.icon = key;
       state.iconData = '';
       state.iconUrl = '';
       document.getElementById('iconUrlInput').value = '';
       document.getElementById('iconFileInput').value = '';
-      document.getElementById('iconPreviewImg').hidden = true;
+      const preview = document.getElementById('iconPreviewImg');
+      preview.removeAttribute('src');
+      preview.hidden = true;
       document.getElementById('iconClearBtn').hidden = true;
       grid.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
@@ -586,61 +385,85 @@ function initIconPicker() {
   const iconUrlInput = document.getElementById('iconUrlInput');
 
   fileInput.addEventListener('change', () => {
-    const file = fileInput.files[0];
+    const selection = ++iconSelection;
+    const file = fileInput.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/') || file.size > 2 * 1024 * 1024) {
+      fileInput.value = '';
+      showToast('Choose an image smaller than 2 MB');
+      return;
+    }
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onerror = () => {
+      if (iconSelection === selection) showToast('Unable to read the image');
+    };
+    reader.onload = () => {
+      if (iconSelection !== selection) return;
       const img = new Image();
-      img.onload = () => {
-        /* Resize to 32×32 via canvas */
-        const canvas    = document.createElement('canvas');
-        canvas.width    = 32;
-        canvas.height   = 32;
-        const ctx       = canvas.getContext('2d');
-        const s         = Math.min(32 / img.width, 32 / img.height);
-        const w         = img.width  * s;
-        const h         = img.height * s;
-        ctx.drawImage(img, (32 - w) / 2, (32 - h) / 2, w, h);
-        const dataUrl   = canvas.toDataURL('image/png');
-
-        state.iconData  = dataUrl;
-        state.iconUrl   = '';
-        state.icon      = 'none';
-        iconUrlInput.value = '';
-        previewImg.src  = dataUrl;
-        previewImg.hidden = false;
-        clearBtn.hidden = false;
-
-        /* Deactivate built-in icon buttons */
-        document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('active'));
-        render();
+      img.onerror = () => {
+        if (iconSelection === selection) showToast('Unable to decode the image');
       };
-      img.src = e.target.result;
+      img.onload = () => {
+        if (iconSelection !== selection) return;
+        try {
+          if (!img.width || !img.height || img.width > 4096 || img.height > 4096) {
+            throw new Error('Invalid image dimensions');
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = canvas.height = 32;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) throw new Error('Canvas is unavailable');
+          const scale = Math.min(32 / img.width, 32 / img.height);
+          const width = img.width * scale;
+          const height = img.height * scale;
+          ctx.drawImage(img, (32 - width) / 2, (32 - height) / 2, width, height);
+          const dataUrl = canvas.toDataURL('image/png');
+
+          state.iconData = dataUrl;
+          state.iconUrl = '';
+          state.icon = 'none';
+          iconUrlInput.value = '';
+          previewImg.src = dataUrl;
+          previewImg.hidden = false;
+          clearBtn.hidden = false;
+          grid.querySelectorAll('.icon-btn').forEach(button => button.classList.remove('active'));
+          render();
+        } catch {
+          showToast('Unable to process the image');
+        }
+      };
+      img.src = reader.result;
     };
     reader.readAsDataURL(file);
   });
 
   /* Icon URL input */
   iconUrlInput.addEventListener('input', () => {
+    iconSelection++;
     const url = iconUrlInput.value.trim();
     state.iconUrl = url;
+    state.iconData = '';
+    fileInput.value = '';
     if (url) {
       state.icon = 'none';
-      grid.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('active'));
-      // Show URL-sourced preview
-      previewImg.src = url;
-      previewImg.hidden = false;
-      clearBtn.hidden = false;
+      grid.querySelectorAll('.icon-btn').forEach(button => button.classList.remove('active'));
     }
+    const safeUrl = getHttpsIconUrl(url);
+    if (safeUrl) previewImg.src = safeUrl;
+    else previewImg.removeAttribute('src');
+    previewImg.hidden = !safeUrl;
+    clearBtn.hidden = !url;
     render();
   });
 
   clearBtn.addEventListener('click', () => {
+    iconSelection++;
     state.iconData  = '';
     state.iconUrl   = '';
     iconUrlInput.value = '';
     fileInput.value = '';
+    previewImg.removeAttribute('src');
     previewImg.hidden = true;
     clearBtn.hidden   = true;
     /* Re-activate default icon */
@@ -706,7 +529,16 @@ function initPresets() {
    SYNC ALL FIELDS → DOM (called after preset or reset)
    ═══════════════════════════════════════════════════════════════ */
 
+function syncRadiusField() {
+  const input = document.getElementById('inputRadius');
+  const radius = state.borderRadius ?? STYLES[state.style].radius;
+  const displayRadius = Math.min(radius, Number(input.max));
+  input.value = displayRadius;
+  document.getElementById('radiusVal').textContent = displayRadius;
+}
+
 function syncAllFieldsFromState() {
+  iconSelection++;
   document.getElementById('inputLabel').value       = state.label;
   document.getElementById('inputValue').value       = state.value;
   document.getElementById('inputStyle').value       = state.style;
@@ -715,9 +547,7 @@ function syncAllFieldsFromState() {
   document.getElementById('inputScale').value       = state.scale;
   document.getElementById('scaleVal').textContent   = `${parseFloat(state.scale).toFixed(2)}×`;
 
-  const br = state.borderRadius !== null ? state.borderRadius : (STYLES[state.style] || STYLES['flat']).radius;
-  document.getElementById('inputRadius').value      = br;
-  document.getElementById('radiusVal').textContent  = br;
+  syncRadiusField();
 
   document.getElementById('optGradient').checked   = state.gradient;
   document.getElementById('optUppercase').checked  = state.uppercase;
@@ -733,8 +563,10 @@ function syncAllFieldsFromState() {
   if (!state.iconData && !state.iconUrl) {
     const fi = document.getElementById('iconFileInput');
     if (fi) fi.value = '';
-    document.getElementById('iconPreviewImg').hidden = true;
-    document.getElementById('iconClearBtn').hidden   = true;
+    const preview = document.getElementById('iconPreviewImg');
+    preview.removeAttribute('src');
+    preview.hidden = true;
+    document.getElementById('iconClearBtn').hidden = true;
   }
 
   /* Colors */
@@ -774,7 +606,10 @@ function initFormWiring() {
     const el = document.getElementById(id);
     const lists = { inputStyle: STYLE_ORDER, inputTheme: THEME_ORDER, inputSize: SIZE_ORDER };
     for (const opt of lists[id]) {
-      el.insertAdjacentHTML('beforeend', `<option value="${opt}">${opt}</option>`);
+      const option = document.createElement('option');
+      option.value = opt;
+      option.textContent = opt;
+      el.appendChild(option);
     }
     el.value = state[key];
     el.addEventListener('change', (e) => {
@@ -782,9 +617,7 @@ function initFormWiring() {
       if (key === 'style') {
         /* Reset border radius to style default when style changes */
         state.borderRadius = null;
-        const defR = (STYLES[e.target.value] || STYLES['flat']).radius;
-        document.getElementById('inputRadius').value = defR;
-        document.getElementById('radiusVal').textContent = defR;
+        syncRadiusField();
       }
       if (key === 'theme') {
         state.labelBg = state.valueBg = state.labelColor = state.valueColor = state.borderColor = '';
@@ -844,7 +677,7 @@ function initControlSections() {
 
 function initActions() {
   document.getElementById('btnCopySvg').addEventListener('click', () => {
-    copyText(_currentSvg, 'SVG');
+    copyText(currentSvg, 'SVG');
   });
 
   document.getElementById('btnCopyMarkdown').addEventListener('click', () => {
@@ -852,8 +685,8 @@ function initActions() {
   });
 
   document.getElementById('btnDownloadSvg').addEventListener('click', () => {
-    const slug = (state.label || 'label').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    downloadSVG(_currentSvg, `badge-${slug}.svg`);
+    const slug = (state.label || 'label').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'label';
+    downloadSVG(currentSvg, `badge-${slug}.svg`);
   });
 
   document.getElementById('btnReset').addEventListener('click', () => {
@@ -895,17 +728,25 @@ function initPreviewBg() {
    ═══════════════════════════════════════════════════════════════ */
 
 function initThemeToggle() {
-  const btn    = document.getElementById('themeToggle');
-  const html   = document.documentElement;
-  const stored = localStorage.getItem('badge-forge-theme');
-
-  if (stored === 'light') html.setAttribute('data-theme', 'light');
+  const btn = document.getElementById('themeToggle');
+  const html = document.documentElement;
+  try {
+    if (localStorage.getItem('badge-forge-theme') === 'light') {
+      html.setAttribute('data-theme', 'light');
+    }
+  } catch {
+    // Storage may be unavailable in private or sandboxed contexts.
+  }
 
   btn.addEventListener('click', () => {
     const current = html.getAttribute('data-theme');
     const next    = current === 'dark' ? 'light' : 'dark';
     html.setAttribute('data-theme', next);
-    localStorage.setItem('badge-forge-theme', next);
+    try {
+      localStorage.setItem('badge-forge-theme', next);
+    } catch {
+      // The current theme still works when storage is unavailable.
+    }
   });
 }
 

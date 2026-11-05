@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="176" height="35" role="img" aria-label="★ quality: A+">
 
-<rect x="0" y="0" width="123" height="35" fill="#151026" rx="6" ry="6" />
-<rect x="123" y="0" width="53" height="35" fill="#1e1237" rx="6" ry="6" />
-<rect x="117" y="0" width="6" height="35" fill="#151026" />
+<rect x="0" y="0" width="123" height="35" fill="#151026" rx="17" ry="17" />
+<rect x="123" y="0" width="53" height="35" fill="#1e1237" rx="17" ry="17" />
+<rect x="106" y="0" width="17" height="35" fill="#151026" />
 
 <text x="61.5" y="22.78" fill="#67e8f9" font-size="16" font-family="Verdana,DejaVu Sans,sans-serif" font-weight="700" text-anchor="middle">★ quality</text>
 <text x="149.5" y="22.78" fill="#c4b5fd" font-size="16" font-family="Verdana,DejaVu Sans,sans-serif" font-weight="700" text-anchor="middle">A+</text>

@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="104" height="22" role="img" aria-label="📘 docs: stable">
 
-<rect x="0" y="0" width="52" height="22" fill="none" rx="4" ry="4" stroke="#d1d5db" stroke-width="1" />
-<rect x="52" y="0" width="52" height="22" fill="none" rx="4" ry="4" stroke="#d1d5db" stroke-width="1" />
-<rect x="48" y="0" width="4" height="22" fill="none" />
+<rect x="0" y="0" width="52" height="22" fill="none" rx="6" ry="6" stroke="#d1d5db" stroke-width="1" />
+<rect x="52" y="0" width="52" height="22" fill="none" rx="6" ry="6" stroke="#d1d5db" stroke-width="1" />
+<rect x="46" y="0" width="6" height="22" fill="none" />
 
 <text x="26.0" y="14.3" fill="#111827" font-size="10" font-family="Verdana,DejaVu Sans,sans-serif" font-weight="600" text-anchor="middle">📘 docs</text>
 <text x="78.0" y="14.3" fill="#1d4ed8" font-size="10" font-family="Verdana,DejaVu Sans,sans-serif" font-weight="600" text-anchor="middle">stable</text>
