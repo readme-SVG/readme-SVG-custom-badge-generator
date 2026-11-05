@@ -4,6 +4,7 @@
     { "src": "api/badge.js", "use": "@vercel/node" },
     { "src": "index.html", "use": "@vercel/static" },
     { "src": "app.js", "use": "@vercel/static" },
+    { "src": "badge-core.js", "use": "@vercel/static" },
     { "src": "styles.css", "use": "@vercel/static" },
     { "src": "sample_svgs/**", "use": "@vercel/static" }
   ],

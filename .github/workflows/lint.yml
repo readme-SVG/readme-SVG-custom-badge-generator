@@ -19,41 +19,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.head_ref }}
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: |
-          if [ ! -f package.json ]; then
-            echo "No package.json found. Skipping npm install."
-            exit 0
-          fi
-          if [ -f package-lock.json ]; then
-            echo "package-lock.json found. Running fast install (npm ci)..."
-            npm ci
-          else
-            echo "package-lock.json NOT found. Generating it (npm install)..."
-            npm install --no-audit --no-fund
-          fi
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
 
-      - name: Run project lint script when available
-        run: |
-          if [ -f package.json ]; then
-            npm run lint --if-present
-          else
-            echo "No package.json found. Skipping lint."
-          fi
+      - name: Install server dependencies
+        run: npm ci --prefix server --no-audit --no-fund
 
-      - name: Validate JavaScript syntax
+      - name: Check JavaScript and Python syntax
         run: |
-          if [ -d api ]; then
-            while IFS= read -r -d '' file; do
-              node --check "$file"
-            done < <(find api -type f -name '*.js' -print0)
-          else
-            echo "No api/ directory found. Skipping JavaScript syntax validation."
-          fi
+          node --check app.js
+          node --check badge-core.js
+          node --check api/badge.js
+          node --check api/iconFetcher.js
+          python -m py_compile api/*.py process_event.py scripts/*.py "trigger action/trigger_action.py"
+
+      - name: Build TypeScript server
+        run: npm run build --prefix server
+
+      - name: Run JavaScript and server tests
+        run: node --test tests/*.test.js
+
+      - name: Run Python tests and verify sample badges
+        run: |
+          python -m unittest discover -s tests -p 'test_*.py'
+          python scripts/refresh_sample_svgs.py
+          git diff --exit-code -- sample_svgs/

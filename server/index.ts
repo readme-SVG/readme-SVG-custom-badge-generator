@@ -1,72 +1,65 @@
-/**
- * Badge Forge — Server
- * Express server for URL-based badge generation.
- * Architecture inspired by DenverCoder1/custom-icon-badges.
- *
- * Features:
- *   - SVG badge generation via URL (query params or path-based)
- *   - Cache-Control headers for GET requests
- *   - Rate limiting for POST endpoints
- *   - Static file serving for the frontend app
- */
-
-import express, { Request, Response, NextFunction } from "express";
+import express, { NextFunction, Request, Response } from "express";
+import fs from "fs";
 import path from "path";
 import rateLimit from "express-rate-limit";
 import router from "./routes/routes";
 
 const app = express();
-const PORT = parseInt(process.env.PORT || "5000", 10);
+app.disable("x-powered-by");
 
-// ── JSON body parsing ──
-app.use(express.json({ limit: "256kb" }));
-
-// ── Rate limiting for POST requests (icon uploads) ──
 const postLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
+  windowMs: 5 * 60 * 1000,
   max: 10,
   message: { error: "Too many requests, please try again later" },
   standardHeaders: true,
   legacyHeaders: false,
 });
-app.post("*", postLimiter);
 
-// ── Cache-Control headers ──
 app.use((req: Request, res: Response, next: NextFunction) => {
-  if (req.method === "GET") {
-    res.setHeader("Cache-Control", "public, max-age=300");
-  } else {
-    res.setHeader("Cache-Control", "no-store");
-  }
-  next();
-});
-
-// ── CORS headers ──
-app.use((_req: Request, res: Response, next: NextFunction) => {
+  res.setHeader("Cache-Control", req.method === "GET" ? "public, max-age=300" : "no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   next();
 });
 
-// ── API routes ──
-app.use("/", router);
+// Rate-limit uploads before parsing their JSON bodies.
+app.post("*", postLimiter);
+app.use(express.json({ limit: "256kb" }));
 
-// ── Static files — serve the frontend app ──
-const staticRoot = path.resolve(__dirname, "..");
-app.use(express.static(staticRoot, { extensions: ["html"] }));
+app.use((error: Error & { type?: string }, _req: Request, res: Response, next: NextFunction) => {
+  if (error.type === "entity.parse.failed") {
+    res.status(400).json({ error: "Invalid JSON body" });
+  } else if (error.type === "entity.too.large") {
+    res.status(413).json({ error: "Request body too large" });
+  } else {
+    next(error);
+  }
+});
 
-// ── Fallback to index.html for SPA ──
+app.use(router);
+
+// ts-node runs from server/, while compiled code runs from server/dist/.
+const staticRoot = [path.resolve(__dirname, ".."), path.resolve(__dirname, "../..")]
+  .find(root => fs.existsSync(path.join(root, "index.html")));
+if (!staticRoot) throw new Error("Unable to find frontend assets");
+
+for (const asset of ["app.js", "badge-core.js", "styles.css"]) {
+  app.get(`/${asset}`, (_req: Request, res: Response) => {
+    res.sendFile(path.join(staticRoot, asset));
+  });
+}
+app.use("/sample_svgs", express.static(path.join(staticRoot, "sample_svgs"), { index: false }));
 app.get("*", (_req: Request, res: Response) => {
   res.sendFile(path.join(staticRoot, "index.html"));
 });
 
-// ── Start ──
-app.listen(PORT, () => {
-  console.log(`Badge Forge server running on http://localhost:${PORT}`);
-  console.log(`Badge endpoint: http://localhost:${PORT}/badge?label=build&value=passing`);
-  console.log(`Path endpoint:  http://localhost:${PORT}/badge/build-passing`);
-  console.log(`Icon catalog:   http://localhost:${PORT}/list.json`);
-});
+if (require.main === module) {
+  const port = Number.parseInt(process.env.PORT || "5000", 10);
+  app.listen(port, "0.0.0.0", () => {
+    console.log(`Badge Forge server listening on port ${port}`);
+  });
+}
 
 export default app;

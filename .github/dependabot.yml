@@ -1,12 +1,11 @@
 version: 2
 updates:
-  - package-ecosystem: "pip"
-    directory: "/"
+  - package-ecosystem: "npm"
+    directory: "/server"
     schedule:
       interval: "monthly"
     labels:
       - "dependencies"
-      - "python"
 
   - package-ecosystem: "github-actions"
     directory: "/"
